@@ -28,6 +28,7 @@ def load_users():
 
     return users
 
+
 def save_users(users):
     with open("data/users.csv", mode="w", newline="") as file:
         fieldnames = ["username", "password", "role"]

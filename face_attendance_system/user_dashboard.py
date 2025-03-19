@@ -108,108 +108,208 @@
 #     def add_log_entry(self, message):
 #         """Dynamically add log entries."""
 #         self.log_list.addItem(message)
+
+
+
+import sys
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QPushButton, QListWidget, QHBoxLayout, QMessageBox
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QListWidget, QGridLayout, QTextEdit, QComboBox
 )
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
-import cv2
-import face_recognition
-import numpy as np
-from camera_feed_screen import CameraFeedScreen
-from train_model_screen import TrainModelScreen
-from utils.file_utils import load_cameras, load_users
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt
+import add_camera_screen
 
-class FaceRecognition(QThread):
-    recognition_result = pyqtSignal(str)
-
-    def __init__(self, known_faces, known_names):
-        super().__init__()
-        self.known_faces = known_faces
-        self.known_names = known_names
-        self.running = True
-
-    def run(self):
-        cap = cv2.VideoCapture(0)
-        while self.running:
-            ret, frame = cap.read()
-            if not ret:
-                continue
-
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            face_locations = face_recognition.face_locations(rgb_frame)
-            face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
-
-            for face_encoding in face_encodings:
-                matches = face_recognition.compare_faces(self.known_faces, face_encoding)
-                name = "Unknown"
-
-                if True in matches:
-                    matched_idx = np.where(matches)[0][0]
-                    name = self.known_names[matched_idx]
-
-                self.recognition_result.emit(f"Detected: {name}")
-
-        cap.release()
-
-    def stop(self):
-        self.running = False
-        self.quit()
-
-class UserDashboard(QWidget):
+class UserDashboard(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("User Dashboard")
-        self.setGeometry(100, 100, 1000, 700)
-        self.init_ui()
+        self.setWindowTitle("Camera Dashboard")
+        self.setGeometry(100, 100, 1400, 900)
 
-    def init_ui(self):
-        layout = QVBoxLayout()
+        # Set black and green color theme
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #15171c;
+            }
+            QPushButton {
+                background-color: #5371ff;
+                color: #ffffff;  /* Text color changed to white */
+                font-size: 14px;
+                padding: 10px;
+                border: none;
+                border-radius: 10px;  /* Added border radius */
+            }
+            QPushButton:hover {
+                background-color: #3a5bff;  /* Slightly darker blue on hover */
+            }
+            QListWidget, QTextEdit, QComboBox {
+                background-color: #15171c;
+                color: #ffffff;  /* Text color changed to white */
+                border: 1px solid #5371ff;
+                font-size: 14px;
+                border-radius: 5px;  /* Added border radius */
+            }
+            QLabel {
+                color: #ffffff;  /* Text color changed to white */
+                font-size: 16px;
+            }
+        """)
 
-        # **Camera List**
-        self.camera_list = QListWidget()
-        self.camera_list.itemClicked.connect(self.open_camera_feed)
-        self.load_cameras()
-        layout.addWidget(self.camera_list)
+        # Main widget
+        main_widget = QWidget()
+        self.setCentralWidget(main_widget)
+        main_layout = QVBoxLayout()
+        main_widget.setLayout(main_layout)
 
-        # **Train Model Button**
-        self.train_model_btn = QPushButton("Train Model")
-        self.train_model_btn.clicked.connect(self.open_train_model)
-        layout.addWidget(self.train_model_btn)
+        # Top horizontal plane (centered options)
+        top_panel = QHBoxLayout()
+        main_layout.addLayout(top_panel)
 
-        # **Start Face Recognition**
-        self.start_recognition_btn = QPushButton("Start Face Recognition")
-        self.start_recognition_btn.clicked.connect(self.start_face_recognition)
-        layout.addWidget(self.start_recognition_btn)
+        # Add stretch to center the buttons
+        top_panel.addStretch()
+        top_panel.addWidget(QPushButton("Live Feed"))
+        top_panel.addWidget(QPushButton("Replay"))
+        top_panel.addWidget(QPushButton("Export"))
+        top_panel.addStretch()
 
-        self.setLayout(layout)
+        # User section (photo and name)
+        user_section = QVBoxLayout()
+        user_photo = QLabel()
+        user_photo.setPixmap(QPixmap("user_photo.png").scaled(50, 50, Qt.KeepAspectRatio))  # Replace with actual photo path
+        user_section.addWidget(user_photo)
+        user_section.addWidget(QLabel("User Name"))
+        top_panel.addLayout(user_section)
 
-    def load_cameras(self):
-        self.camera_list.clear()
-        cameras = load_cameras()
-        for cam in cameras:
-            self.camera_list.addItem(cam["name"])
+        # Middle section (left, middle, right panels)
+        middle_section = QHBoxLayout()
+        main_layout.addLayout(middle_section)
 
-    def open_camera_feed(self, item):
-        self.camera_screen = CameraFeedScreen(item.text())
-        self.camera_screen.show()
+        # Left panel (Add Camera, Camera List, and Grid View Options)
+        left_panel = QVBoxLayout()
+        left_panel.addWidget(QPushButton("Add Camera"))
+        camera_list = QListWidget()
+        camera_list.addItems([f"Camera O{i}" for i in range(1, 10)] + ["Camera IO"])
+        left_panel.addWidget(camera_list)
 
-    def open_train_model(self):
-        self.train_screen = TrainModelScreen()
-        self.train_screen.show()
+        # Grid View Options (Combo Box)
+        grid_options = QComboBox()
+        grid_options.addItems(["2X2","4x4", "6x6", "8x8"])
+        grid_options.currentTextChanged.connect(self.change_grid_view)
+        left_panel.addWidget(QLabel("Grid View:"))
+        left_panel.addWidget(grid_options)
 
-    def start_face_recognition(self):
-        users = load_users()
-        if not users:
-            QMessageBox.warning(self, "No Users", "No trained faces available.")
-            return
+        middle_section.addLayout(left_panel)
+
+        # Middle panel (Grid View for Video Feeds)
+        self.middle_panel = QGridLayout()
+        self.current_grid_size = 2  # Default grid size
+        self.update_grid_view(2)  # Initialize with 3x3 grid
+        middle_section.addLayout(self.middle_panel, stretch=5)  # Middle panel is bigger
+
+        # Right panel (Camera Management and Activity Log)
+        right_panel = QVBoxLayout()
+        right_panel.addWidget(QPushButton("Load Camera"))
+        right_panel.addWidget(QPushButton("Save Camera"))
+        right_panel.addWidget(QPushButton("Add IP Camera"))
+        activity_log = QTextEdit()
+        activity_log.setReadOnly(True)
+        activity_log.setPlaceholderText("Activity Log: Person Detected: John Doe")
+        right_panel.addWidget(activity_log)
+        middle_section.addLayout(right_panel, stretch=2)  # Right panel is narrower
+
+        # Bottom options (Add Known Person, User, License Validation, Exit)
+        bottom_panel = QHBoxLayout()
+        bottom_panel.addWidget(QPushButton("Add Known Person"))
+        bottom_panel.addWidget(QPushButton("User"))
+        bottom_panel.addWidget(QPushButton("License Validation"))
+        bottom_panel.addWidget(QPushButton("Exit"))
+        main_layout.addLayout(bottom_panel)
+
+    def open_add_camera_screen(self):
+        """Open the Add Camera screen."""
+        self.add_camera_screen = add_camera_screen()
+        self.add_camera_screen.show()
+
+    def change_grid_view(self, text):
+        """Change the grid view based on the selected option."""
+        if text == "2X2":
+            self.update_grid_view(2)
+        elif text == "4x4":
+            self.update_grid_view(4)
+        elif text == "6x6":
+            self.update_grid_view(6)
+        elif text == "8x8":
+            self.update_grid_view(8)
+
+  
+    def update_grid_view(self, size):
+        """Update the video feed grid layout dynamically with rounded borders."""
+        # Remove existing widgets
+        while self.middle_panel.count():
+            item = self.middle_panel.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        self.current_grid_size = size  # Update grid size
         
-        known_faces = [np.array(user['encoding']) for user in users]
-        known_names = [user['name'] for user in users]
-        
-        self.recognition_thread = FaceRecognition(known_faces, known_names)
-        self.recognition_thread.recognition_result.connect(self.display_recognition_result)
-        self.recognition_thread.start()
-    
-    def display_recognition_result(self, result):
-        QMessageBox.information(self, "Recognition Result", result)
+        for i in range(size):
+            for j in range(size):
+                feed_widget = QLabel(f"Feed {i * size + j + 1}")  # Placeholder for camera feeds
+                # feed_label.setStyleSheet("border: 2px solid #5371ff; color: #ffffff;")  
+                feed_widget.setAlignment(Qt.AlignCenter)
+                
+                # Apply rounded corners and border styling
+                feed_widget.setStyleSheet("""
+                    background-color: black;
+                    min-height: 150px;
+                    border-radius: 15px; /* Rounded corners */
+                    border: 2px solid #555; /* Optional border */
+                    color: white;
+                    border: 2px solid #5371ff; color: #ffffff;
+                """)
+                
+                self.middle_panel.addWidget(feed_widget, i, j)
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    dashboard = UserDashboard()
+    dashboard.show()
+    sys.exit(app.exec_())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  # def update_grid_view(self, size):
+    #     """Update the grid view with the specified size."""
+    #     # Clear the existing grid
+    #     for i in reversed(range(self.middle_panel.count())):
+    #         self.middle_panel.itemAt(i).widget().setParent(None)
+
+    #     # Add new grid items
+    #     for i in range(size):
+    #         for j in range(size):
+    #             feed_label = QLabel(f"Camera Feed {i * size + j + 1}")
+    #             feed_label.setAlignment(Qt.AlignCenter)
+    #             feed_label.setStyleSheet("border: 2px solid #5371ff; color: #ffffff;")  
+    #             self.middle_panel.addWidget(feed_label, i, j)
+
+    #     self.current_grid_size = size
