@@ -172,7 +172,13 @@ class UserDashboard(QMainWindow):
         self.activity_log.setPlaceholderText("Activity Log")
         right_panel.addWidget(self.activity_log)
         middle_section.addLayout(right_panel, stretch=2)
-
+    # Bottom options (Add Known Person, User, License Validation, Exit)
+        bottom_panel = QHBoxLayout()
+        bottom_panel.addWidget(QPushButton("Add Known Person"))
+        bottom_panel.addWidget(QPushButton("User"))
+        bottom_panel.addWidget(QPushButton("License Validation"))
+        bottom_panel.addWidget(QPushButton("Exit"))
+        main_layout.addLayout(bottom_panel)
 
     def open_add_camera_dialog(self):
         """ Opens the Add Camera Form Dialog """
