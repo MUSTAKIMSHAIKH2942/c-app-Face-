@@ -13,12 +13,13 @@ from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt, QTimer
 import pandas as pd
 from add_camera_screen import AddCameraDialog
+from add_person_to_code import AddPersonForm
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Constants
-MODEL_PATH = "trained_model.yml"
+MODEL_PATH = "models/trained_model.yml"
 DATA_PATH = "data/training_images"
 LOGS_FILE = "data/logs.csv"
 CAMERA_CSV = "data/camera.csv"
@@ -203,7 +204,14 @@ class UserDashboard(QMainWindow):
 
         # Bottom Panel
         bottom_panel = QHBoxLayout()
-        bottom_panel.addWidget(QPushButton("Add Known Person"))
+        # bottom_panel.addWidget(QPushButton("Add Known Person"))
+        # layout = QVBoxLayout()
+
+        add_user = QPushButton("Add Known Person")
+        add_user.clicked.connect(self.open_add_person_form)
+        bottom_panel.addWidget(add_user)
+
+
         user_button = QPushButton("User")
         user_button.clicked.connect(self.show_user_data)
         bottom_panel.addWidget(user_button)
@@ -219,6 +227,10 @@ class UserDashboard(QMainWindow):
 
     def exit_app(self):
         self.close()
+
+    def open_add_person_form(self):
+        self.add_person_form =  AddPersonForm()
+        self.add_person_form.show()
 
     def closeEvent(self, event):
         for i in range(self.middle_panel.count()):
